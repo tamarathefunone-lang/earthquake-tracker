@@ -34,13 +34,32 @@ def main() -> None:
     st.title("Earthquake Tracker")
     st.header("Track recent earthquakes 🌎")
 
+    #st.markdown(
+    #        """
+    #        <meta http-equiv="refresh" content="20">
+    #        """,
+    #        unsafe_allow_html=True
+    #    )
+
+    
     with st.sidebar:
         st.subheader("Filters")
-        min_mag = st.slider("Minimum magnitude", min_value=0.0, max_value=10.0, value=2.5, step=0.1)
-        days_back = st.selectbox("Days back", options=[1, 7, 30], index=2)
-        keyword = st.text_input("Keyword / location (optional)", value="San Ramon")
-        num_results = st.slider("Number of results", min_value=1, max_value=100, value=5, step=1)
-        show_map = st.checkbox("Show map", value=True)
+        if 'min_mag' not in st.session_state:
+            st.session_state['min_mag'] = 2.5
+        if 'days_back' not in st.session_state:
+            st.session_state['days_back'] = 30
+        if 'keyword' not in st.session_state:
+            st.session_state['keyword'] = "San Ramon"
+        if 'num_results' not in st.session_state:
+            st.session_state['num_results'] = 5
+        if 'show_map' not in st.session_state:
+            st.session_state['show_map'] = True
+
+        min_mag = st.slider("Minimum magnitude", min_value=0.0, max_value=10.0, value=st.session_state['min_mag'], step=0.1, key='min_mag')
+        days_back = st.selectbox("Days back", options=[1, 7, 30], index=[1, 7, 30].index(st.session_state['days_back']), key='days_back')
+        keyword = st.text_input("Keyword / location (optional)", value=st.session_state['keyword'], key='keyword')
+        num_results = st.slider("Number of results", min_value=1, max_value=100, value=st.session_state['num_results'], step=1, key='num_results')
+        show_map = st.checkbox("Show map", value=st.session_state['show_map'], key='show_map')
 
     try:
         df = cached_fetch(days_back=days_back)
@@ -78,13 +97,16 @@ def main() -> None:
 
     # Make times nicer for display (drop tz info)
     if "time" in filtered.columns:
-        filtered["time"] = filtered["time"].dt.tz_convert(None)
+        filtered["time"] = filtered["time"]
 
     # Limit number of results
     filtered = filtered.head(num_results)
 
     # Results table
     display_df = filtered[["time", "place", "magnitude"]].copy()
+    # Format time as human-readable (e.g., 4:30 AM, 5:30 PM)
+
+    display_df["time"] = display_df["time"].apply(lambda t: t.strftime("%m/%d/%Y %I:%M %p") if pd.notnull(t) else "")
     # Show magnitude as text so it's left-aligned
     display_df["magnitude"] = display_df["magnitude"].apply(lambda m: "" if pd.isna(m) else f"{m:.1f}")
     st.dataframe(
@@ -112,6 +134,13 @@ def main() -> None:
         else:
             st.map(map_df)
 
+
+    
+
+    # Display last refresh time
+    import time
+    last_refresh = st.session_state.get('last_refresh', time.time())
+    st.caption(f"Last refresh: {datetime.fromtimestamp(last_refresh).strftime('%Y-%m-%d %H:%M:%S')}")
 
     st.markdown(
     """

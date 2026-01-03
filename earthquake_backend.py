@@ -50,6 +50,14 @@ def fetch_earthquakes(days_back: int = 1, timeout_s: int = 20) -> pd.DataFrame:
     if "time" in df.columns:
         df["time"] = pd.to_datetime(df["time"], unit="ms", utc=True, errors="coerce")
 
+    if "time" in df.columns and pd.api.types.is_datetime64_any_dtype(df["time"]):
+        try:
+            df["time"] = df["time"].dt.tz_convert("America/Los_Angeles")
+        except TypeError:
+            # If naive, assume UTC then convert
+            df["time"] = df["time"].dt.tz_localize("UTC").dt.tz_convert("America/Los_Angeles")
+
+
     # Ensure expected columns exist even if empty
     for col in ["time", "place", "magnitude", "url", "latitude", "longitude"]:
         if col not in df.columns:
@@ -84,7 +92,13 @@ def filter_earthquakes(df: pd.DataFrame, min_mag: float, days_back: int, keyword
     out = out.sort_values("time", ascending=False)
 
     # Prettier time for display (naive local-ish)
+    # Convert UTC times to Pacific Time (PST/PDT)
     if "time" in out.columns and pd.api.types.is_datetime64_any_dtype(out["time"]):
-        out["time"] = out["time"].dt.tz_convert(None)
+        try:
+            out["time"] = out["time"].dt.tz_convert("America/Los_Angeles")
+        except TypeError:
+            # If naive, assume UTC then convert
+            out["time"] = out["time"].dt.tz_localize("UTC").dt.tz_convert("America/Los_Angeles")
+
 
     return out
