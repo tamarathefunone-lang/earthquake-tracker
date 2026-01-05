@@ -17,7 +17,7 @@ from earthquake_backend import filter_earthquakes
 import pandas as pd
 import requests
 import streamlit as st
-
+import time
 
 USGS_ALL_DAY = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
 
@@ -31,8 +31,7 @@ def cached_fetch(days_back: int) -> pd.DataFrame:
 
 
 def main() -> None:
-    st.title("Earthquake Tracker")
-    st.header("Track recent earthquakes 🌎")
+    st.title("Track recent earthquakes 🌎")
 
     #st.markdown(
     #        """
@@ -45,21 +44,16 @@ def main() -> None:
     with st.sidebar:
         st.subheader("Filters")
         if 'min_mag' not in st.session_state:
-            st.session_state['min_mag'] = 2.5
+            st.session_state['min_mag'] = 1
         if 'days_back' not in st.session_state:
-            st.session_state['days_back'] = 30
+            st.session_state['days_back'] = 7
         if 'keyword' not in st.session_state:
-            st.session_state['keyword'] = "San Ramon"
-        if 'num_results' not in st.session_state:
-            st.session_state['num_results'] = 5
-        if 'show_map' not in st.session_state:
-            st.session_state['show_map'] = True
+            st.session_state['keyword'] = "California"
 
-        min_mag = st.slider("Minimum magnitude", min_value=0.0, max_value=10.0, value=st.session_state['min_mag'], step=0.1, key='min_mag')
-        days_back = st.selectbox("Days back", options=[1, 7, 30], index=[1, 7, 30].index(st.session_state['days_back']), key='days_back')
-        keyword = st.text_input("Keyword / location (optional)", value=st.session_state['keyword'], key='keyword')
-        num_results = st.slider("Number of results", min_value=1, max_value=100, value=st.session_state['num_results'], step=1, key='num_results')
-        show_map = st.checkbox("Show map", value=st.session_state['show_map'], key='show_map')
+        min_mag = st.slider("Minimum magnitude", min_value=0.0, max_value=10.0, step=0.1, key='min_mag')
+        days_back = st.selectbox("Days back", options=[1, 7, 30], key='days_back')
+        keyword = st.text_input("Keyword / location (optional)", key='keyword')
+
 
     try:
         df = cached_fetch(days_back=days_back)
@@ -67,6 +61,37 @@ def main() -> None:
         st.error(f"Failed to fetch data from USGS: {e}")
         return
 
+    # Display last refresh time
+    # ensure there's a stored refresh timestamp
+    if "last_refresh" not in st.session_state:
+        st.session_state["last_refresh"] = time.time()
+
+    # show caption and the map toggle side-by-side, giving the caption more width
+    col_caption, col_toggle = st.columns([4, 1])
+    last_refresh = st.session_state.get("last_refresh", time.time())
+    col_caption.caption(
+        f"Last refresh: {datetime.fromtimestamp(last_refresh).strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+
+    if "show_map" not in st.session_state:
+        st.session_state["show_map"] = True
+    with col_toggle:
+        show_map =st.checkbox("Show map", key="show_map")
+
+    # ensure the row uses the full available width
+    st.markdown(
+        """
+        <style>
+        .stColumns, .stColumn {
+            max-width: 100vw !important;
+            width: 100% !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    
     filtered = filter_earthquakes(df, min_mag=min_mag, days_back=days_back, keyword=keyword)
 
     st.write(f"Showing **{len(filtered)}** earthquakes")
@@ -99,13 +124,22 @@ def main() -> None:
     if "time" in filtered.columns:
         filtered["time"] = filtered["time"]
 
-    # Limit number of results
-    filtered = filtered.head(num_results)
+
 
     # Results table
     display_df = filtered[["time", "place", "magnitude"]].copy()
     # Format time as human-readable (e.g., 4:30 AM, 5:30 PM)
 
+    # If there are more than 5 rows, constrain the dataframe's height so it becomes scrollable.
+    if len(display_df) > 5:
+        # approximate row height (px) and cap visible rows to 5
+        row_px = 50
+        max_rows_visible = 5
+        max_height = row_px * max_rows_visible
+        st.markdown(
+            f"<style>.stDataFrame > div {{ max-height: {max_height}px; overflow-y: auto; }}</style>",
+            unsafe_allow_html=True,
+        )
     display_df["time"] = display_df["time"].apply(lambda t: t.strftime("%m/%d/%Y %I:%M %p") if pd.notnull(t) else "")
     # Show magnitude as text so it's left-aligned
     display_df["magnitude"] = display_df["magnitude"].apply(lambda m: "" if pd.isna(m) else f"{m:.1f}")
@@ -114,9 +148,13 @@ def main() -> None:
         use_container_width=True,
         hide_index=True,
         column_config={
+            "time": st.column_config.TextColumn("Time (Local)"),
+            "place": st.column_config.TextColumn("Location"),
             "magnitude": st.column_config.TextColumn("Magnitude")
         }
     )
+
+   
 
     # Optional map
     if show_map:
@@ -135,12 +173,7 @@ def main() -> None:
             st.map(map_df)
 
 
-    
 
-    # Display last refresh time
-    import time
-    last_refresh = st.session_state.get('last_refresh', time.time())
-    st.caption(f"Last refresh: {datetime.fromtimestamp(last_refresh).strftime('%Y-%m-%d %H:%M:%S')}")
 
     st.markdown(
     """
