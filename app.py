@@ -31,7 +31,7 @@ def cached_fetch(days_back: int) -> pd.DataFrame:
 
 
 def main() -> None:
-    st.header("Track recent earthquakes 🌎")
+    st.title("Track recent earthquakes 🌎")
 
     #st.markdown(
     #        """
@@ -93,8 +93,14 @@ def main() -> None:
     
     
     filtered = filter_earthquakes(df, min_mag=min_mag, days_back=days_back, keyword=keyword)
-
-    st.write(f"Showing **{len(filtered)}** earthquakes")
+    results_message =   f"Showing **{len(filtered)}** earthquakes"
+    #st.write(results_message)
+    # Show current filters
+    kw_display = (keyword or "").strip()
+    kw_display = f"'{kw_display}'" if kw_display else "(none)"
+    filter_message = f"Filters Applied: Minimum magnitude ≥ {min_mag}, Days back = {days_back}, Keyword = {kw_display}"
+    st.write(results_message)
+    st.write(filter_message)
 
     if filtered.empty:
         st.warning("No earthquakes match your filters. Try lowering the magnitude or increasing days back.")
@@ -127,7 +133,7 @@ def main() -> None:
 
 
     # Results table
-    display_df = filtered[["time", "place", "magnitude"]].copy()
+    display_df = filtered[["time", "magnitude", "place"]].copy()
     # Format time as human-readable (e.g., 4:30 AM, 5:30 PM)
 
     display_df["time"] = display_df["time"].apply(lambda t: t.strftime("%m/%d/%Y %I:%M %p") if pd.notnull(t) else "")
@@ -153,8 +159,9 @@ def main() -> None:
         hide_index=True,
         column_config={
             "time": st.column_config.TextColumn("Time (Local)"),
+            "magnitude": st.column_config.TextColumn("Magnitude"),
             "place": st.column_config.TextColumn("Location"),
-            "magnitude": st.column_config.TextColumn("Magnitude")
+            
         }
     )
 
