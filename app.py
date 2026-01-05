@@ -31,7 +31,7 @@ def cached_fetch(days_back: int) -> pd.DataFrame:
 
 
 def main() -> None:
-    st.title("Track recent earthquakes 🌎")
+    st.header("Track recent earthquakes 🌎")
 
     #st.markdown(
     #        """
