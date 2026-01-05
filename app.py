@@ -178,7 +178,23 @@ def main() -> None:
     st.markdown(
     """
     <style>
-    /* Responsive font sizes and layout for mobile */
+    html, body, .stApp, .main, .block-container {
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+    .stDataFrame, .stTable, .stDeckGlJson {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+    .stDataFrame td, .stTable td {
+        word-break: break-word !important;
+        text-overflow: ellipsis !important;
+        max-width: 120px !important;
+        overflow-x: hidden !important;
+    }
     @media (max-width: 600px) {
         .stApp, .main, .block-container {
             padding: 0 !important;
@@ -193,8 +209,6 @@ def main() -> None:
         .stDataFrame, .stTable { font-size: 0.9em !important; }
         .stButton>button { font-size: 1.1em !important; }
     }
-    /* Always use full width for tables and maps */
-    .stDataFrame, .stTable, .stDeckGlJson { width: 100vw !important; max-width: 100vw !important; }
     </style>
     """,
     unsafe_allow_html=True
