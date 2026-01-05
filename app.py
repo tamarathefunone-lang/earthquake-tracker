@@ -130,19 +130,23 @@ def main() -> None:
     display_df = filtered[["time", "place", "magnitude"]].copy()
     # Format time as human-readable (e.g., 4:30 AM, 5:30 PM)
 
-    # If there are more than 5 rows, constrain the dataframe's height so it becomes scrollable.
-    if len(display_df) > 5:
-        # approximate row height (px) and cap visible rows to 5
-        row_px = 50
-        max_rows_visible = 5
-        max_height = row_px * max_rows_visible
-        st.markdown(
-            f"<style>.stDataFrame > div {{ max-height: {max_height}px; overflow-y: auto; }}</style>",
-            unsafe_allow_html=True,
-        )
     display_df["time"] = display_df["time"].apply(lambda t: t.strftime("%m/%d/%Y %I:%M %p") if pd.notnull(t) else "")
     # Show magnitude as text so it's left-aligned
     display_df["magnitude"] = display_df["magnitude"].apply(lambda m: "" if pd.isna(m) else f"{m:.1f}")
+    # Truncate long location strings so the table columns don't force horizontal scrolling
+    display_df["place"] = display_df["place"].astype(str).apply(lambda s: s if len(s) <= 120 else s[:117] + "…")
+
+    # Force fixed table layout and hide horizontal overflow / show ellipsis for overflowing cells
+    st.markdown(
+        """
+        <style>
+        .stDataFrame table { table-layout: fixed !important; width: 100% !important; }
+        .stDataFrame td, .stTable td { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+        .stDataFrame, .stTable, .stDeckGlJson { overflow-x: hidden !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.dataframe(
         display_df,
         use_container_width=True,
