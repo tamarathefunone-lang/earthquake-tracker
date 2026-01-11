@@ -115,18 +115,7 @@ def main() -> None:
     # Optional map
     if show_map:
         # Prepare a DataFrame with valid latitude/longitude for st.map
-        if {"latitude", "longitude"}.issubset(filtered.columns):
-            coords = filtered[["latitude", "longitude"]].copy()
-            coords["latitude"] = pd.to_numeric(coords["latitude"], errors="coerce")
-            coords["longitude"] = pd.to_numeric(coords["longitude"], errors="coerce")
-            map_df = coords.dropna(subset=["latitude", "longitude"])
-        else:
-            map_df = pd.DataFrame(columns=["latitude", "longitude"])
-
-        if map_df.empty:
-            st.info("No latitude/longitude available to show on the map.")
-        else:
-            st.map(map_df, zoom=10)
+        render_map(filtered)
 
        
     st.markdown(
@@ -167,7 +156,22 @@ def main() -> None:
     """,
     unsafe_allow_html=True
 )
+
     
+def render_map(filtered_df):
+        if {"latitude", "longitude"}.issubset(filtered_df.columns):
+            coords = filtered_df[["latitude", "longitude"]].copy()
+            coords["latitude"] = pd.to_numeric(coords["latitude"], errors="coerce")
+            coords["longitude"] = pd.to_numeric(coords["longitude"], errors="coerce")
+            map_df = coords.dropna(subset=["latitude", "longitude"])
+        else:
+            map_df = pd.DataFrame(columns=["latitude", "longitude"])
+
+        if map_df.empty:
+            st.info("No latitude/longitude available to show on the map.")
+        else:
+            st.map(map_df, zoom=10)
+
 
 if __name__ == "__main__":
     main()
