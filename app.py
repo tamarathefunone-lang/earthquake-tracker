@@ -13,9 +13,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from earthquake_backend import filter_earthquakes
-
 import pandas as pd
-import requests
 import streamlit as st
 import time
 
@@ -51,8 +49,8 @@ def main() -> None:
             st.session_state['keyword'] = "California"
 
         min_mag = st.slider("Minimum magnitude", min_value=0.0, max_value=10.0, step=0.1, key='min_mag')
-        days_back = st.selectbox("Days back", options=[1, 7, 30], key='days_back')
-        keyword = st.text_input("Keyword / location (optional)", key='keyword')
+        days_back = st.radio("Days Prior", options=[1, 7, 30], key='days_back')
+        keyword = st.text_input("Location (optional)", key='keyword')
 
 
     try:
@@ -66,7 +64,6 @@ def main() -> None:
     if "last_refresh" not in st.session_state:
         st.session_state["last_refresh"] = time.time()
 
-    # show caption and the map toggle side-by-side, giving the caption more width
     col_caption, col_toggle = st.columns([4, 1])
     last_refresh = st.session_state.get("last_refresh", time.time())
     col_caption.caption(
@@ -76,7 +73,7 @@ def main() -> None:
     if "show_map" not in st.session_state:
         st.session_state["show_map"] = True
     with col_toggle:
-        show_map =st.checkbox("Show map", key="show_map")
+        show_map = st.checkbox("Show map", key="show_map")
 
     # ensure the row uses the full available width
     st.markdown(
@@ -91,14 +88,13 @@ def main() -> None:
         unsafe_allow_html=True,
     )
     
-    
     filtered = filter_earthquakes(df, min_mag=min_mag, days_back=days_back, keyword=keyword)
-    results_message =   f"Showing **{len(filtered)}** earthquakes"
+    results_message = f"**{len(filtered)}** Earthquakes Shown"
     #st.write(results_message)
     # Show current filters
     kw_display = (keyword or "").strip()
     kw_display = f"'{kw_display}'" if kw_display else "(none)"
-    filter_message = f"Filters Applied: Minimum magnitude ≥ {min_mag}, Days back = {days_back}, Keyword = {kw_display}"
+    filter_message = f"Filters Applied:   Minimum magnitude ≥ {min_mag},   Days Prior = {days_back},   Main Location = {kw_display}"
     st.write(results_message)
     st.write(filter_message)
 
@@ -106,43 +102,11 @@ def main() -> None:
         st.warning("No earthquakes match your filters. Try lowering the magnitude or increasing days back.")
         return
 
-
-    
-    # Build masks for magnitude and recency
-    now_utc = datetime.now(timezone.utc)
-    cutoff = now_utc - timedelta(days=days_back)
-
-    mag_mask = df["magnitude"].fillna(-999) >= min_mag
-    time_mask = df["time"].notna() & (df["time"] >= cutoff)
-
-    mask = mag_mask & time_mask
-
-    # Optional keyword (case-insensitive) on the place column
-    kw = (keyword or "").strip().lower()
-    if kw:
-        place_series = df["place"].fillna("").str.lower()
-        mask &= place_series.str.contains(kw)
-
-    # Apply filters and sort newest first
-    filtered = df.loc[mask].sort_values(by="time", ascending=False).copy()
-
-    # Make times nicer for display (drop tz info)
-    if "time" in filtered.columns:
-        filtered["time"] = filtered["time"]
-
-
-
     # Results table
     display_df = filtered[["time", "magnitude", "place"]].copy()
-    # Format time as human-readable (e.g., 4:30 AM, 5:30 PM)
-
     display_df["time"] = display_df["time"].apply(lambda t: t.strftime("%m/%d/%Y %I:%M %p") if pd.notnull(t) else "")
-    # Show magnitude as text so it's left-aligned
     display_df["magnitude"] = display_df["magnitude"].apply(lambda m: "" if pd.isna(m) else f"{m:.1f}")
-    # Truncate long location strings so the table columns don't force horizontal scrolling
     display_df["place"] = display_df["place"].astype(str).apply(lambda s: s if len(s) <= 120 else s[:117] + "…")
-
-    # Force fixed table layout and hide horizontal overflow / show ellipsis for overflowing cells
     st.markdown(
         """
         <style>
@@ -161,11 +125,8 @@ def main() -> None:
             "time": st.column_config.TextColumn("Time (Local)"),
             "magnitude": st.column_config.TextColumn("Magnitude"),
             "place": st.column_config.TextColumn("Location"),
-            
         }
     )
-
-   
 
     # Optional map
     if show_map:
@@ -175,6 +136,7 @@ def main() -> None:
             coords["latitude"] = pd.to_numeric(coords["latitude"], errors="coerce")
             coords["longitude"] = pd.to_numeric(coords["longitude"], errors="coerce")
             map_df = coords.dropna(subset=["latitude", "longitude"])
+            zoom_level = 2
         else:
             map_df = pd.DataFrame(columns=["latitude", "longitude"])
 
@@ -183,9 +145,7 @@ def main() -> None:
         else:
             st.map(map_df)
 
-
-
-
+       
     st.markdown(
     """
     <style>
