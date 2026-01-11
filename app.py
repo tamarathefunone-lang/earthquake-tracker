@@ -42,15 +42,18 @@ def main() -> None:
     with st.sidebar:
         st.subheader("Filters")
         if 'min_mag' not in st.session_state:
-            st.session_state['min_mag'] = 1
+            st.session_state['min_mag'] = 2
         if 'days_back' not in st.session_state:
             st.session_state['days_back'] = 7
         if 'keyword' not in st.session_state:
-            st.session_state['keyword'] = "California"
+            st.session_state['keyword'] = "San Ramon"
+        if "show_map" not in st.session_state:
+            st.session_state["show_map"] = True
 
         min_mag = st.slider("Minimum magnitude", min_value=0.0, max_value=10.0, step=0.1, key='min_mag')
         days_back = st.radio("Days Prior", options=[1, 7, 30], key='days_back')
         keyword = st.text_input("Location (optional)", key='keyword')
+        show_map = st.checkbox("Show map", key="show_map")
 
 
     try:
@@ -64,28 +67,9 @@ def main() -> None:
     if "last_refresh" not in st.session_state:
         st.session_state["last_refresh"] = time.time()
 
-    col_caption, col_toggle = st.columns([4, 1])
-    last_refresh = st.session_state.get("last_refresh", time.time())
-    col_caption.caption(
+    last_refresh = time.time()
+    st.caption(
         f"Last refresh: {datetime.fromtimestamp(last_refresh).strftime('%Y-%m-%d %H:%M:%S')}"
-    )
-
-    if "show_map" not in st.session_state:
-        st.session_state["show_map"] = True
-    with col_toggle:
-        show_map = st.checkbox("Show map", key="show_map")
-
-    # ensure the row uses the full available width
-    st.markdown(
-        """
-        <style>
-        .stColumns, .stColumn {
-            max-width: 100vw !important;
-            width: 100% !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
     )
     
     filtered = filter_earthquakes(df, min_mag=min_mag, days_back=days_back, keyword=keyword)
@@ -136,14 +120,13 @@ def main() -> None:
             coords["latitude"] = pd.to_numeric(coords["latitude"], errors="coerce")
             coords["longitude"] = pd.to_numeric(coords["longitude"], errors="coerce")
             map_df = coords.dropna(subset=["latitude", "longitude"])
-            zoom_level = 2
         else:
             map_df = pd.DataFrame(columns=["latitude", "longitude"])
 
         if map_df.empty:
             st.info("No latitude/longitude available to show on the map.")
         else:
-            st.map(map_df)
+            st.map(map_df, zoom=10)
 
        
     st.markdown(
